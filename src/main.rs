@@ -1,25 +1,11 @@
-use std::{env, fs};
-
-struct Config {
-    query: String,
-    filename: String,
-}
-
-impl Config {
-    fn new(query: String, filename: String) -> Config {
-        Config { query, filename }
-    }
-}
-
-fn parse_config(args: &[String]) -> Config {
-    let query = args[1].clone();
-    let filename = args[2].clone();
-    Config::new(query, filename)
-}
+use std::{env, fs, process};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let config = parse_config(&args);
+    let config = Config::new(&args).unwrap_or_else(|err| {
+        println!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
 
     println!("searching {}", config.query);
     println!("in {}", config.filename);
@@ -28,4 +14,22 @@ fn main() {
         fs::read_to_string(config.filename).expect("Something went wrong reading the file");
 
     println!("With text: \n{}", contents);
+}
+
+struct Config {
+    query: String,
+    filename: String,
+}
+
+impl Config {
+    fn new(args: &[String]) -> Result<Config, &'static str> {
+        if args.len() < 3 {
+            return Err("Not nough arguments");
+        }
+
+        let query = args[1].clone();
+        let filename = args[2].clone();
+
+        Ok(Config { query, filename })
+    }
 }
