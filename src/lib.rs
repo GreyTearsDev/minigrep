@@ -1,9 +1,15 @@
-use std::{error::Error, fs};
+use std::{env, error::Error, fs};
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.filename)?;
 
-    for line in search(&config.query, &contents) {
+    let results = if config.case_sensitive {
+        search(&config.query, &contents)
+    } else {
+        search_case_insensitive(&config.query, &contents)
+    };
+
+    for line in results {
         println!("{}", line);
     }
 
@@ -38,6 +44,7 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
 pub struct Config {
     pub query: String,
     pub filename: String,
+    pub case_sensitive: bool,
 }
 
 impl Config {
@@ -49,7 +56,12 @@ impl Config {
         let query = args[1].clone();
         let filename = args[2].clone();
 
-        Ok(Config { query, filename })
+        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+        Ok(Config {
+            query,
+            filename,
+            case_sensitive,
+        })
     }
 }
 
@@ -108,7 +120,8 @@ Trust me.";
             config.unwrap(),
             Config {
                 query: "test".to_string(),
-                filename: "test.txt".to_string()
+                filename: "test.txt".to_string(),
+                case_sensitive: true,
             }
         )
     }
@@ -118,6 +131,7 @@ Trust me.";
         let a = Config {
             query: "test".to_string(),
             filename: "poem.txt".to_string(),
+            case_sensitive: true,
         };
 
         assert_eq!(run(a).unwrap(), ());
@@ -129,6 +143,7 @@ Trust me.";
         let a = Config {
             query: "test".to_string(),
             filename: "I do not exist.txt".to_string(),
+            case_sensitive: true,
         };
 
         if let Err(e) = run(a) {
