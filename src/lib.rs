@@ -3,8 +3,22 @@ use std::{error::Error, fs};
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.filename)?;
 
-    println!("With text: \n{}", contents);
+    for line in search(&config.query, &contents) {
+        println!("{}", line);
+    }
+
     Ok(())
+}
+
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    let mut results = Vec::new();
+
+    for line in contents.lines() {
+        if line.contains(query) {
+            results.push(line)
+        }
+    }
+    results
 }
 
 #[derive(PartialEq, Debug)]
@@ -28,64 +42,68 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    mod config {
-        use super::super::*;
-        use core::panic;
-        #[test]
-        #[should_panic]
-        pub(crate) fn fails_with_not_enough_args() {
-            let args = ["/here".to_string(), "test".to_string()];
-            if let Err(e) = Config::new(&args) {
-                panic!("Application error: {}", e);
-            };
-        }
+    use super::*;
+    use core::panic;
 
-        #[test]
-        pub(crate) fn passes_with_enough_args() {
-            let args = [
-                "/here".to_string(),
-                "test".to_string(),
-                "test.txt".to_string(),
-            ];
+    #[test]
+    fn one_result() {
+        let query = "duct";
+        let contents = "\
+Rust:
+safe, fast, productive.
+Pick three.";
 
-            let config = Config::new(&args);
-
-            assert_eq!(
-                config.unwrap(),
-                Config {
-                    query: "test".to_string(),
-                    filename: "test.txt".to_string()
-                }
-            )
-        }
+        assert_eq!(vec!["safe, fast, productive."], search(query, contents))
     }
 
-    mod run {
-        use core::panic;
+    #[test]
+    #[should_panic]
+    fn fails_with_not_enough_args() {
+        let args = vec!["/here".to_string(), "test".to_string()];
+        if let Err(e) = Config::new(&args) {
+            panic!("Application error: {}", e);
+        };
+    }
 
-        use super::super::*;
+    #[test]
+    fn passes_with_enough_args() {
+        let args = [
+            "/here".to_string(),
+            "test".to_string(),
+            "test.txt".to_string(),
+        ];
 
-        #[test]
-        fn runs_successfully() {
-            let a = Config {
+        let config = Config::new(&args);
+
+        assert_eq!(
+            config.unwrap(),
+            Config {
                 query: "test".to_string(),
-                filename: "poem.txt".to_string(),
-            };
-
-            assert_eq!(run(a).unwrap(), ());
-        }
-
-        #[test]
-        #[should_panic]
-        fn fails_for_non_existent_filename() {
-            let a = Config {
-                query: "test".to_string(),
-                filename: "I do not exist.txt".to_string(),
-            };
-
-            if let Err(e) = run(a) {
-                panic!("Application Error: {}", e);
+                filename: "test.txt".to_string()
             }
+        )
+    }
+
+    #[test]
+    fn runs_successfully() {
+        let a = Config {
+            query: "test".to_string(),
+            filename: "poem.txt".to_string(),
+        };
+
+        assert_eq!(run(a).unwrap(), ());
+    }
+
+    #[test]
+    #[should_panic]
+    fn fails_for_non_existent_filename() {
+        let a = Config {
+            query: "test".to_string(),
+            filename: "I do not exist.txt".to_string(),
+        };
+
+        if let Err(e) = run(a) {
+            panic!("Application Error: {}", e);
         }
     }
 }
